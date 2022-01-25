@@ -11,7 +11,7 @@ const NewPostForm = () => {
   const [video, setVideo] = useState("");
   const [file, setFile] = useState();
   const userData = useSelector((state) => state.userReducer);
-  const error = useSelector((state) => state.errorReducer);
+  const error = useSelector((state) => state.errorReducer.postError);
   const dispatch = useDispatch();
 
   const handlePicture = (e) => {
@@ -46,7 +46,6 @@ const NewPostForm = () => {
   useEffect(() => {
     if (!isEmpty(userData)) setIsLoading(false);
 
-    console.log(error);
     const handleVideo = () => {
       let findLink = message.split(" ");
       for (let i = 0; i < findLink.length; i++) {

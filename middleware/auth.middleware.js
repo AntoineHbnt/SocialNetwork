@@ -17,7 +17,6 @@ module.exports.checkUser = (req, res, next) => {
     });
   } else {
     res.locals.user = null;
-    console.log('No token');
     next();
   }
 };

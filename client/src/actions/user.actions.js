@@ -6,6 +6,9 @@ export const UPDATE_BIO = "UPDATE_BIO";
 export const FOLLOW_USER = "FOLLOW_USER";
 export const UNFOLLOW_USER = "UNFOLLOW_USER";
 
+//errors
+export const GET_USER_ERRORS = "GET_USER_ERRORS";
+
 export const getUser = (uid) => {
   return (dispatch) => {
     return axios
@@ -22,11 +25,17 @@ export const uploadPicture = (data, id) => {
     return axios
       .post(`${process.env.REACT_APP_API_URL}api/user/upload`, data)
       .then((res) => {
-        return axios
-          .get(`${process.env.REACT_APP_API_URL}api/user/${id}`)
-          .then((res) => {
-            dispatch({ type: UPLOAD_PICTURE, payload: res.data.picture });
-          });
+        if (res.data.errors) {
+          dispatch({ type: GET_USER_ERRORS, payload: res.data.errors });
+        } else {
+          dispatch({ type: GET_USER_ERRORS, payload: "" });
+
+          return axios
+            .get(`${process.env.REACT_APP_API_URL}api/user/${id}`)
+            .then((res) => {
+              dispatch({ type: UPLOAD_PICTURE, payload: res.data.picture });
+            });
+        }
       })
       .catch((err) => console.log(err));
   };
@@ -61,15 +70,15 @@ export const followUser = (followerId, idToFollow) => {
 };
 
 export const unfollowUser = (followerId, idToUnfollow) => {
-    return (dispatch) => {
-      return axios({
-        method: "patch",
-        url: `${process.env.REACT_APP_API_URL}api/user/unfollow/` + followerId,
-        data: { idToUnfollow },
+  return (dispatch) => {
+    return axios({
+      method: "patch",
+      url: `${process.env.REACT_APP_API_URL}api/user/unfollow/` + followerId,
+      data: { idToUnfollow },
+    })
+      .then((res) => {
+        dispatch({ type: UNFOLLOW_USER, payload: { idToUnfollow } });
       })
-        .then((res) => {
-          dispatch({ type: UNFOLLOW_USER, payload: { idToUnfollow } });
-        })
-        .catch((err) => console.log(err));
-    };
+      .catch((err) => console.log(err));
   };
+};

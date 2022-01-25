@@ -1,10 +1,11 @@
+const postModel = require("../models/post.model");
 const PostModel = require("../models/post.model");
 const UserModel = require("../models/user.model");
+const { uploadErrors } = require("../utils/error.utils");
 const ObjectID = require("mongoose").Types.ObjectId;
 const fs = require("fs");
 const { promisify } = require("util");
 const pipeline = promisify(require("stream").pipeline);
-const { uploadErrors } = require("../utils/error.utils");
 
 module.exports.readPost = (req, res) => {
   PostModel.find((err, docs) => {
@@ -16,21 +17,24 @@ module.exports.readPost = (req, res) => {
 module.exports.createPost = async (req, res) => {
   let fileName;
 
-  if(req.file !== null){
+  if (req.file !== null) {
     try {
       if (
-        req.file.detectedMimeType !== "image/jpg" &&
-        req.file.detectedMimeType !== "image/png" &&
-        req.file.detectedMimeType !== "image/jpeg"
+        req.file.detectedMimeType != "image/jpg" &&
+        req.file.detectedMimeType != "image/png" &&
+        req.file.detectedMimeType != "image/jpeg"
       )
         throw Error("invalid file");
-  
-      if (req.file.size > 500000) throw Error("max size");
+
+      if (req.file.size > 500000){
+        throw Error("max size");
+
+      } 
     } catch (err) {
       const errors = uploadErrors(err);
-      res.status(201).json({ errors });
+      return res.status(201).json({ errors });
     }
-    fileName = req.body.posterId + Date.now() + '.jpg';
+    fileName = req.body.posterId + Date.now() + ".jpg";
 
     await pipeline(
       req.file.stream,
@@ -38,13 +42,12 @@ module.exports.createPost = async (req, res) => {
         `${__dirname}/../client/public/uploads/posts/${fileName}`
       )
     );
-  
   }
 
-  const newPost = new PostModel({
+  const newPost = new postModel({
     posterId: req.body.posterId,
     message: req.body.message,
-    picture: req.file !== null ? "./uploads/posts/"+fileName : "",
+    picture: req.file !== null ? "./uploads/posts/" + fileName : "",
     video: req.body.video,
     likers: [],
     comments: [],
@@ -52,15 +55,15 @@ module.exports.createPost = async (req, res) => {
 
   try {
     const post = await newPost.save();
-    res.status(200).json(post);
+    return res.status(201).json(post);
   } catch (err) {
-    res.status(201).send(err);
+    return res.status(400).send(err);
   }
 };
 
 module.exports.updatePost = (req, res) => {
   if (!ObjectID.isValid(req.params.id))
-    res.status(500).send("Unknown ID : " + req.params.id);
+    return res.status(400).send("ID unknown : " + req.params.id);
 
   const updatedRecord = {
     message: req.body.message,
@@ -71,7 +74,7 @@ module.exports.updatePost = (req, res) => {
     { $set: updatedRecord },
     { new: true },
     (err, docs) => {
-      if (!err) res.status(200).send(docs);
+      if (!err) res.send(docs);
       else console.log("Update error : " + err);
     }
   );
@@ -79,10 +82,10 @@ module.exports.updatePost = (req, res) => {
 
 module.exports.deletePost = (req, res) => {
   if (!ObjectID.isValid(req.params.id))
-    return res.status(500).send("Unknown ID : " + req.params.id);
+    return res.status(400).send("ID unknown : " + req.params.id);
 
   PostModel.findByIdAndRemove(req.params.id, (err, docs) => {
-    if (!err) res.status(200).send(docs);
+    if (!err) res.send(docs);
     else console.log("Delete error : " + err);
   });
 };
@@ -91,11 +94,8 @@ module.exports.likePost = async (req, res) => {
   if (!ObjectID.isValid(req.params.id))
     return res.status(400).send("ID unknown : " + req.params.id);
 
-  if (!ObjectID.isValid(req.body.id))
-    return res.status(400).send("ID unknown : " + req.body.id);
-
   try {
-    PostModel.findByIdAndUpdate(
+    await PostModel.findByIdAndUpdate(
       req.params.id,
       {
         $addToSet: { likers: req.body.id },
@@ -105,7 +105,7 @@ module.exports.likePost = async (req, res) => {
         if (err) return res.status(400).send(err);
       }
     );
-    UserModel.findByIdAndUpdate(
+    await UserModel.findByIdAndUpdate(
       req.body.id,
       {
         $addToSet: { likes: req.params.id },
@@ -117,7 +117,7 @@ module.exports.likePost = async (req, res) => {
       }
     );
   } catch (err) {
-    return res.status(400).json(err);
+    return res.status(400).send(err);
   }
 };
 
@@ -125,11 +125,8 @@ module.exports.unlikePost = async (req, res) => {
   if (!ObjectID.isValid(req.params.id))
     return res.status(400).send("ID unknown : " + req.params.id);
 
-  if (!ObjectID.isValid(req.body.id))
-    return res.status(400).send("ID unknown : " + req.body.id);
-
   try {
-    PostModel.findByIdAndUpdate(
+    await PostModel.findByIdAndUpdate(
       req.params.id,
       {
         $pull: { likers: req.body.id },
@@ -139,7 +136,7 @@ module.exports.unlikePost = async (req, res) => {
         if (err) return res.status(400).send(err);
       }
     );
-    UserModel.findByIdAndUpdate(
+    await UserModel.findByIdAndUpdate(
       req.body.id,
       {
         $pull: { likes: req.params.id },
@@ -151,7 +148,7 @@ module.exports.unlikePost = async (req, res) => {
       }
     );
   } catch (err) {
-    return res.status(400).json(err);
+    return res.status(400).send(err);
   }
 };
 
@@ -179,7 +176,7 @@ module.exports.commentPost = (req, res) => {
       }
     );
   } catch (err) {
-    return res.status(400).json(err);
+    return res.status(400).send(err);
   }
 };
 
@@ -206,28 +203,27 @@ module.exports.editCommentPost = (req, res) => {
   }
 };
 
-
 module.exports.deleteCommentPost = (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-      return res.status(400).send("ID unknown : " + req.params.id);
-  
-    try {
-      return PostModel.findByIdAndUpdate(
-        req.params.id,
-        {
-          $pull: {
-            comments: {
-              _id: req.body.commentId,
-            },
+  if (!ObjectID.isValid(req.params.id))
+    return res.status(400).send("ID unknown : " + req.params.id);
+
+  try {
+    return PostModel.findByIdAndUpdate(
+      req.params.id,
+      {
+        $pull: {
+          comments: {
+            _id: req.body.commentId,
           },
         },
-        { new: true },
-        (err, docs) => {
-          if (!err) return res.send(docs);
-          else return res.status(400).send(err);
-        }
-      );
-    } catch (err) {
-      return res.status(400).send(err);
-    }
-  };
+      },
+      { new: true },
+      (err, docs) => {
+        if (!err) return res.send(docs);
+        else return res.status(400).send(err);
+      }
+    );
+  } catch (err) {
+    return res.status(400).send(err);
+  }
+};
