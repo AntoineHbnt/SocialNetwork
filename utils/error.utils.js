@@ -7,7 +7,11 @@ module.exports.signUpErrors = (err) => {
   if (err.message.includes("password"))
     errors.password = "Le mot de passe doit faire 6 caractère minimum";
 
-  if (err.code === 11000) errors.email = "Cet email est déjà utilisé";
+  if (err.code === 11000 && Object.keys(err.keyValue)[0].includes("email"))
+    errors.email = "Cet email est déjà utilisé";
+
+  if (err.code === 11000 && Object.keys(err.keyValue)[0].includes("pseudo"))
+    errors.pseudo = "Ce pseudo est déjà utilisé";
 
   return errors;
 };
@@ -24,15 +28,15 @@ module.exports.signInErrors = (err) => {
 };
 
 module.exports.uploadErrors = (err) => {
-  let erros = {format: '', maxSize: ''};
+  let errors = { format: "", maxSize: "" };
 
-  if(err.message.includes('invalid file'))
+  if (err.message.includes("invalid file"))
     errors.format = "Format incompatiblie";
 
-  if(err.message.includes('max size'))
-    errors.maxSize = 'Le fichier dépasse 500ko';
+  if (err.message.includes("max size"))
+    errors.maxSize = "Le fichier dépasse 500ko";
 
-  return errors
+  return errors;
 
-  return errors
-}
+  return errors;
+};
